@@ -1,0 +1,15 @@
+# Dependencies
+node_modules/
+
+# Environment Variables
+.env
+
+# Database (optional - Render creates a fresh database file on startup)
+warrior_feedback.db
+
+# Test scripts
+test-browser.js
+
+# OS Files
+.DS_Store
+Thumbs.db

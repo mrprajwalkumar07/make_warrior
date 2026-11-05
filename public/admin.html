@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Make Warrior | Headquarters Inbox</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Rajdhani:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .admin-container {
+      max-width: 1100px;
+      margin: 3rem auto;
+      padding: 0 1.5rem;
+    }
+    .admin-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-crimson);
+      box-shadow: 0 16px 40px rgba(0,0,0,0.7);
+      padding: 2rem;
+      border-radius: 4px;
+      margin-bottom: 2rem;
+      position: relative;
+    }
+    .admin-key-form {
+      display: flex;
+      gap: 1rem;
+      margin-top: 1.5rem;
+      flex-wrap: wrap;
+    }
+    .admin-key-input {
+      flex: 1;
+      min-width: 260px;
+    }
+    .dispatch-table-wrap {
+      overflow-x: auto;
+      margin-top: 1.5rem;
+      border: 1px solid var(--border-subtle);
+      border-radius: 4px;
+    }
+    .dispatch-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.95rem;
+      text-align: left;
+    }
+    .dispatch-table th {
+      background: #181b24;
+      font-family: var(--font-heading);
+      letter-spacing: 0.1em;
+      color: var(--accent-gold);
+      padding: 1rem 1.25rem;
+      border-bottom: 2px solid var(--accent-crimson);
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .dispatch-table td {
+      padding: 1.1rem 1.25rem;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      vertical-align: top;
+    }
+    .dispatch-table tr:hover td {
+      background: rgba(220, 38, 38, 0.05);
+    }
+    .badge-id {
+      font-family: var(--font-heading);
+      color: var(--accent-gold);
+      font-weight: 700;
+    }
+    .time-stamp {
+      font-size: 0.8rem;
+      color: var(--text-subtle);
+      white-space: nowrap;
+    }
+    .note-cell {
+      max-width: 380px;
+      line-height: 1.5;
+      color: var(--text-main);
+      word-break: break-word;
+    }
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .back-btn {
+      color: var(--accent-gold);
+      font-family: var(--font-heading);
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-size: 0.9rem;
+    }
+    .back-btn:hover {
+      color: #fff;
+    }
+  </style>
+</head>
+<body class="warrior-theme">
+
+  <div class="admin-container">
+    <div class="top-bar">
+      <a href="/" class="back-btn">&larr; Return to Fortress Home</a>
+      <div class="brand-text">MAKE <span class="accent-gold">WARRIOR</span> HEADQUARTERS</div>
+    </div>
+
+    <div class="admin-card">
+      <div class="section-tag">ADMINISTRATIVE ACCESS</div>
+      <h1 class="section-title" style="font-size: 1.85rem;">BATTLEFIELD DISPATCH INBOX</h1>
+      <p class="section-intro" style="margin: 0.5rem 0 0 0;">Enter your administrative security key (defined as <code>ADMIN_KEY</code> in <code>.env</code>) to decrypt and inspect all saved submissions.</p>
+
+      <form id="keyForm" class="admin-key-form">
+        <input
+          type="password"
+          id="adminKeyInput"
+          class="form-input admin-key-input"
+          placeholder="Enter ADMIN_KEY"
+          required
+        >
+        <button type="submit" id="loadBtn" class="btn btn-primary">
+          <span>🔓 Access Inbox</span>
+        </button>
+      </form>
+
+      <div id="statusMessage" class="status-alert hidden" style="margin-top: 1.5rem;">
+        <span id="statusText"></span>
+      </div>
+    </div>
+
+    <!-- Results Section -->
+    <div id="resultsCard" class="admin-card hidden">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <h2 style="font-family: var(--font-heading); font-size: 1.35rem; color: #fff;">
+          TRANSMISSIONS RECEIVED: <span id="entryCount" class="accent-gold">0</span>
+        </h2>
+        <button id="refreshBtn" class="btn btn-secondary" style="padding: 0.5rem 1.2rem; font-size: 0.85rem;">
+          ↻ Refresh
+        </button>
+      </div>
+
+      <div class="dispatch-table-wrap">
+        <table class="dispatch-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Codename / Name</th>
+              <th>Phone</th>
+              <th>Email</th>
+              <th>Intelligence / Note</th>
+              <th>Received At</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+            <!-- Populated via script -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // BACKEND API BASE URL:
+    // Leave as "" for local development, or set to your Render URL if hosted on Cloudflare Pages
+    // e.g. const BACKEND_API_URL = "https://your-app-name.onrender.com";
+    const BACKEND_API_URL = "";
+
+    const keyForm = document.getElementById('keyForm');
+    const adminKeyInput = document.getElementById('adminKeyInput');
+    const statusMessage = document.getElementById('statusMessage');
+    const statusText = document.getElementById('statusText');
+    const resultsCard = document.getElementById('resultsCard');
+    const tableBody = document.getElementById('tableBody');
+    const entryCount = document.getElementById('entryCount');
+    const refreshBtn = document.getElementById('refreshBtn');
+
+    // Auto-load if key is stored in localStorage
+    const savedKey = localStorage.getItem('warrior_admin_key');
+    if (savedKey) {
+      adminKeyInput.value = savedKey;
+    }
+
+    async function fetchDispatches(key) {
+      statusMessage.className = 'status-alert hidden';
+      try {
+        const response = await fetch(`${BACKEND_API_URL}/api/feedback`, {
+          headers: {
+            'x-admin-key': key
+          }
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+          statusMessage.className = 'status-alert error';
+          statusText.textContent = data.error || 'Access denied: Invalid admin key.';
+          resultsCard.classList.add('hidden');
+          return;
+        }
+
+        // Save key for convenience
+        localStorage.setItem('warrior_admin_key', key);
+
+        // Render rows
+        entryCount.textContent = data.count;
+        tableBody.innerHTML = '';
+
+        if (data.data.length === 0) {
+          tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">No dispatches recorded in the database yet.</td></tr>';
+        } else {
+          data.data.forEach(item => {
+            const tr = document.createElement('tr');
+            const dateStr = new Date(item.created_at).toLocaleString();
+            tr.innerHTML = `
+              <td class="badge-id">#${item.id}</td>
+              <td style="font-weight: 600; color: #fff;">${escapeHtml(item.name)}</td>
+              <td><a href="tel:${escapeHtml(item.phone_number)}" style="color: var(--accent-gold);">${escapeHtml(item.phone_number)}</a></td>
+              <td><a href="mailto:${escapeHtml(item.email)}" style="color: var(--accent-gold);">${escapeHtml(item.email)}</a></td>
+              <td class="note-cell">${escapeHtml(item.note)}</td>
+              <td class="time-stamp">${dateStr}</td>
+            `;
+            tableBody.appendChild(tr);
+          });
+        }
+
+        resultsCard.classList.remove('hidden');
+      } catch (err) {
+        statusMessage.className = 'status-alert error';
+        statusText.textContent = 'Network error: Unable to connect to server.';
+      }
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text || '';
+      return div.innerHTML;
+    }
+
+    keyForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      fetchDispatches(adminKeyInput.value.trim());
+    });
+
+    refreshBtn.addEventListener('click', () => {
+      fetchDispatches(adminKeyInput.value.trim());
+    });
+
+    // Automatically load on page open if key exists
+    if (adminKeyInput.value) {
+      fetchDispatches(adminKeyInput.value.trim());
+    }
+  </script>
+</body>
+</html>
